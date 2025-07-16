@@ -1,0 +1,306 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MadhuPatelPhotoClub - Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .service-card {
+      transition: all 0.3s ease;
+    }
+    .service-card.selected {
+      background-color: #000000;
+      color: white;
+      transform: scale(1.05);
+    }
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #loader img {
+      width: 100%;
+      max-width: 1200px;
+      height: auto;
+      animation: enlarge 1s forwards;
+    }
+    @keyframes enlarge {
+      from {
+        transform: scale(0.5);
+      }
+      to {
+        transform: scale(1.5);
+      }
+    }
+    .content {
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .content.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-r from-blue-800 to-yellow-300 font-sans">
+  <!-- Loader -->
+  <div id="loader">
+    <img src="../IMG_0954.PNG" alt="Loading...">
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="bg-black text-white p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <img src="../IMG_0954.PNG" alt="Logo" class="h-10 w-auto bg-white">
+        <a href="#" class="text-2xl font-bold">MadhuPatelPhotoClub</a>
+      </div>
+      <div class="space-x-4">
+        <a href="#home" class="hover:underline" onclick="showHome()">Home</a>
+        <a href="#pricing" class="hover:underline" onclick="showPricing()">Pricing</a>
+        <a href="#contact" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section id="home" class="bg-white py-20 content">
+    <div class="container mx-auto text-center px-4">
+      <h1 class="text-4xl font-bold mb-4">Welcome to MadhuPatelPhotoClub</h1>
+      <p class="text-lg mb-6 max-w-2xl mx-auto">
+        Greetings from MadhuPatelPhotoClub! We are passionate about transforming your special moments into timeless memories. Whether it's the joy of an engagement, the grandeur of a wedding, or the warmth of a family celebration, our expert team of photographers and videographers is dedicated to capturing every smile, tear, and heartfelt moment with creativity and care. Let us make your occasions unforgettable with our personalized, high-quality photography and videography services tailored to your unique story.
+      </p>
+      <button onclick="showPricing()" class="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700">View Pricing</button>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section id="pricing" class="py-20 bg-gray-50 content hidden">
+    <div class="container mx-auto px-4">
+      <h2 class="text-3xl font-bold text-center mb-8">Select Your Event and Services</h2>
+      
+      <!-- Event Selection -->
+      <div class="mb-8 text-center">
+        <label for="event-select" class="text-lg font-semibold mr-4">Choose Event:</label>
+        <select id="event-select" class="p-3 border rounded-lg">
+          <option value="" disabled selected>Select an event</option>
+          <option value="engagement">Engagement</option>
+          <option value="wedding">Wedding</option>
+          <option value="reception">Reception</option>
+          <option value="pre-wedding">Pre-Wedding Shoot (1 Day)</option>
+          <option value="birthday">Birthday</option>
+          <option value="house-ceremony">House Ceremony</option>
+        </select>
+      </div>
+
+      <!-- Services Display -->
+      <div id="services-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+      <!-- Summary Section -->
+      <div id="summary" class="mt-12 bg-white p-6 rounded-lg shadow-md hidden">
+        <h3 class="text-2xl font-bold mb-4">Your Package Summary</h3>
+        <ul id="selected-services" class="list-disc list-inside mb-4"></ul>
+        <p id="total-cost" class="text-lg font-semibold"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="py-20 bg-white content hidden">
+    <div class="container mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-4">Contact Us</h2>
+      <p class="text-lg mb-6">Ready to book? Reach out to us!</p>
+      <div class="max-w-md mx-auto">
+        <p>Email: contact@madhupatelphotoclub.com</p>
+        <p>Phone: +91 123-456-7890</p>
+        <p>Address: 123 Photography Lane, Mumbai, India</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-black text-white p-4 text-center content hidden">
+    <p>© 2025 MadhuPatelPhotoClub. All rights reserved.</p>
+  </footer>
+
+  <script>
+    const pricingData = {
+      engagement: [
+        { name: "Traditional Photography", price: 10000 },
+        { name: "Traditional Videography", price: 15000 },
+        { name: "Cinematography", price: 20000 },
+        { name: "Candid Photography", price: 15000 },
+        { name: "Album", price: 15000 }
+      ],
+      wedding: [
+        { name: "Traditional Photography", price: 10000 },
+        { name: "Traditional Videography", price: 15000 },
+        { name: "Cinematography", price: 20000 },
+        { name: "Candid Photography", price: 15000 },
+        { name: "Drone", price: 10000 },
+        { name: "LED", price: 15000 },
+        { name: "Album", price: 35000 }
+      ],
+      reception: [
+        { name: "Traditional Photography", price: 10000 },
+        { name: "Traditional Videography", price: 15000 },
+        { name: "Cinematography", price: 20000 },
+        { name: "Candid Photography", price: 15000 },
+        { name: "Drone", price: 10000 },
+        { name: "LED", price: 15000 },
+        { name: "Album", price: 35000 }
+      ],
+      "pre-wedding": [
+        { name: "Cinematography", price: 25000 },
+        { name: "Drone", price: 10000 },
+        { name: "Candid Photography", price: 15000 },
+        { name: "Choreography", price: 10000 }
+      ],
+      birthday: [
+        { name: "Traditional Photography", price: 10000 },
+        { name: "Traditional Videography", price: 15000 },
+        { name: "Cinematography", price: 20000 },
+        { name: "Candid Photography", price: 15000 },
+        { name: "LED", price: 15000 },
+        { name: "Drone", price: 10000 }
+      ],
+      "house-ceremony": [
+        { name: "Traditional Photography", price: 10000 },
+        { name: "Traditional Videography", price: 15000 },
+        { name: "Cinematography", price: 20000 },
+        { name: "Drone", price: 10000 }
+      ]
+    };
+
+    const eventSelect = document.getElementById("event-select");
+    const servicesContainer = document.getElementById("services-container");
+    const summarySection = document.getElementById("summary");
+    const selectedServicesList = document.getElementById("selected-services");
+    const totalCostElement = document.getElementById("total-cost");
+    const homeSection = document.getElementById("home");
+    const pricingSection = document.getElementById("pricing");
+    const contactSection = document.getElementById("contact");
+    const footerSection = document.querySelector("footer");
+    const loader = document.getElementById("loader");
+    const contentSections = document.querySelectorAll(".content");
+    let selectedServices = [];
+
+    // Hide loader and show content after 2 seconds
+    setTimeout(() => {
+      loader.style.display = "none";
+      contentSections.forEach(section => section.classList.remove("hidden"));
+      contentSections.forEach(section => section.classList.add("visible"));
+    }, 2000);
+
+    function showPricing() {
+      homeSection.classList.add("hidden");
+      pricingSection.classList.remove("hidden");
+    }
+
+    function showHome() {
+      homeSection.classList.remove("hidden");
+      pricingSection.classList.add("hidden");
+      servicesContainer.innerHTML = "";
+      selectedServices = [];
+      updateSummary();
+    }
+
+    eventSelect.addEventListener("change", () => {
+      const event = eventSelect.value;
+      if (!event) return;
+
+      // Clear previous services
+      servicesContainer.innerHTML = "";
+      selectedServices = [];
+      updateSummary();
+
+      // Display services for selected event
+      pricingData[event].forEach(service => {
+        const card = document.createElement("div");
+        card.className = "service-card bg-white p-4 rounded-lg shadow-md cursor-pointer";
+        card.innerHTML = `
+          <h4 class="text-lg font-semibold">${service.name}</h4>
+          <p>₹${service.price.toLocaleString()}</p>
+        `;
+        card.addEventListener("click", () => {
+          card.classList.toggle("selected");
+          const isSelected = card.classList.contains("selected");
+          if (isSelected) {
+            selectedServices.push(service);
+          } else {
+            selectedServices = selectedServices.filter(s => s.name !== service.name);
+          }
+          updateSummary();
+        });
+        servicesContainer.appendChild(card);
+      });
+    });
+
+    function updateSummary() {
+      if (selectedServices.length === 0) {
+        summarySection.classList.add("hidden");
+        return;
+      }
+
+      summarySection.classList.remove("hidden");
+      selectedServicesList.innerHTML = "";
+      let total = 0;
+
+      selectedServices.forEach(service => {
+        const li = document.createElement("li");
+        li.textContent = `${service.name}: ₹${service.price.toLocaleString()}`;
+        selectedServicesList.appendChild(li);
+        total += service.price;
+      });
+
+      totalCostElement.textContent = `Total: ₹${total.toLocaleString()}`;
+    }
+  </script>
+</body>
+</html>
